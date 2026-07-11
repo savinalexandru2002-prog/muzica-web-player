@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, audioTracks, InsertAudioTrack, AudioTrack, spotifyConfig, InsertSpotifyConfig, SpotifyConfig } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,69 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// Audio Tracks queries
+export async function getAudioTracks(): Promise<AudioTrack[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(audioTracks).orderBy(desc(audioTracks.createdAt));
+}
+
+export async function getAudioTrackById(id: number): Promise<AudioTrack | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(audioTracks).where(eq(audioTracks.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createAudioTrack(track: InsertAudioTrack): Promise<AudioTrack> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(audioTracks).values(track);
+  const result = await db.select().from(audioTracks).where(eq(audioTracks.fileKey, track.fileKey)).limit(1);
+  if (result.length === 0) throw new Error("Failed to create audio track");
+  return result[0];
+}
+
+export async function deleteAudioTrack(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(audioTracks).where(eq(audioTracks.id, id));
+}
+
+// Spotify Config queries
+export async function getSpotifyConfig(): Promise<SpotifyConfig | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(spotifyConfig).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function upsertSpotifyConfig(config: InsertSpotifyConfig): Promise<SpotifyConfig> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const existing = await getSpotifyConfig();
+  if (existing) {
+    await db.update(spotifyConfig).set(config).where(eq(spotifyConfig.id, existing.id));
+    const updated = await db.select().from(spotifyConfig).where(eq(spotifyConfig.id, existing.id)).limit(1);
+    return updated[0];
+  } else {
+    await db.insert(spotifyConfig).values(config);
+    const result = await db.select().from(spotifyConfig).limit(1);
+    return result[0];
+  }
+}
+
+export async function updateSpotifyTokens(accessToken: string, refreshToken: string, expiresIn: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const expiresAt = new Date(Date.now() + expiresIn * 1000);
+  const config = await getSpotifyConfig();
+  
+  if (config) {
+    await db.update(spotifyConfig)
+      .set({ accessToken, refreshToken, tokenExpiresAt: expiresAt })
+      .where(eq(spotifyConfig.id, config.id));
+  }
+}
