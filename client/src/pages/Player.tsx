@@ -159,23 +159,24 @@ export default function Player() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground" role="application" aria-label="Muzica Music Player">
       <audio
         ref={audioRef}
         src={currentTrack?.fileUrl}
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
+        aria-label="Audio player"
       />
 
-      {/* Spotify Now Playing Banner */}
-      {spotifyTrack?.track && (
-        <div className="bg-gradient-to-r from-secondary to-accent p-4 text-center border-b border-primary/20">
-          <div className="neon-heading text-lg">
-            🎧 {spotifyTrack.track.artist} - {spotifyTrack.track.name}
-          </div>
-          <p className="text-secondary-neon mt-1">{spotifyTrack.track.album}</p>
-        </div>
-      )}
+              {/* Spotify Now Playing Banner */}
+              {spotifyTrack?.track && (
+                <div className="bg-gradient-to-r from-secondary to-accent p-4 text-center border-b border-primary/20" role="status" aria-live="polite" aria-label="Spotify now playing">
+                  <div className="neon-heading text-lg">
+                    🎧 {spotifyTrack.track.artist} - {spotifyTrack.track.name}
+                  </div>
+                  <p className="text-secondary-neon mt-1">{spotifyTrack.track.album}</p>
+                </div>
+              )}
 
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -214,11 +215,13 @@ export default function Player() {
                   </div>
 
                   {/* Player Controls */}
-                  <div className="flex items-center justify-center gap-4 mb-6">
+                  <div className="flex items-center justify-center gap-4 mb-6" role="group" aria-label="Player controls">
                     <button
                       onClick={handlePrevious}
                       className="btn-neon p-2"
                       disabled={tracks.length === 0}
+                      aria-label="Previous track"
+                      title="Previous track (keyboard: P)"
                     >
                       <SkipBack size={20} />
                     </button>
@@ -226,6 +229,9 @@ export default function Player() {
                     <button
                       onClick={handlePlayPause}
                       className="btn-neon p-3 scale-125"
+                      aria-label={isPlaying ? "Pause" : "Play"}
+                      aria-pressed={isPlaying}
+                      title={isPlaying ? "Pause (keyboard: Space)" : "Play (keyboard: Space)"}
                     >
                       {isPlaying ? <Pause size={24} /> : <Play size={24} />}
                     </button>
@@ -234,14 +240,16 @@ export default function Player() {
                       onClick={handleNext}
                       className="btn-neon p-2"
                       disabled={tracks.length === 0}
+                      aria-label="Next track"
+                      title="Next track (keyboard: N)"
                     >
                       <SkipForward size={20} />
                     </button>
                   </div>
 
                   {/* Volume Control */}
-                  <div className="flex items-center gap-3">
-                    <Volume2 size={18} className="text-primary" />
+                  <div className="flex items-center gap-3" role="group" aria-label="Volume control">
+                    <Volume2 size={18} className="text-primary" aria-hidden="true" />
                     <input
                       type="range"
                       min="0"
@@ -250,8 +258,10 @@ export default function Player() {
                       value={volume}
                       onChange={(e) => setVolume(parseFloat(e.target.value))}
                       className="flex-1 h-2 bg-primary/20 rounded cursor-pointer accent-primary"
+                      aria-label="Volume"
+                      title="Adjust volume (0-100%)"
                     />
-                    <span className="text-sm text-foreground/60 w-8">
+                    <span className="text-sm text-foreground/60 w-8" aria-live="polite">
                       {Math.round(volume * 100)}%
                     </span>
                   </div>
@@ -268,6 +278,8 @@ export default function Player() {
                 <button
                   onClick={() => setShowUploadModal(!showUploadModal)}
                   className="btn-neon w-full flex items-center justify-center gap-2"
+                  aria-label={showUploadModal ? "Close upload form" : "Open upload form"}
+                  aria-expanded={showUploadModal}
                 >
                   <Upload size={18} />
                   Upload New Track
@@ -333,7 +345,7 @@ export default function Player() {
             <div className="card-neon relative">
               <div className="accent-line-left"></div>
               <h3 className="neon-heading text-xl mb-4">PLAYLIST</h3>
-              <div className="space-y-2 max-h-96 overflow-y-auto">
+                <div className="space-y-2 max-h-96 overflow-y-auto" role="listbox" aria-label="Playlist" tabIndex={-1}>
                 {tracks.length === 0 ? (
                   <p className="text-secondary-neon text-center py-8">No tracks yet</p>
                 ) : (
@@ -346,6 +358,15 @@ export default function Player() {
                           : "bg-card border-primary/10 hover:border-primary/30"
                       }`}
                       onClick={() => handleTrackSelect(track.id)}
+                      role="option"
+                      aria-selected={currentTrackId === track.id}
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleTrackSelect(track.id);
+                        }
+                      }}
                     >
                       <p className="font-semibold text-sm truncate">{track.title}</p>
                       <p className="text-xs text-foreground/60 truncate">{track.artist}</p>
@@ -359,6 +380,8 @@ export default function Player() {
                             handleDelete(track.id);
                           }}
                           className="mt-2 text-xs text-destructive hover:text-destructive/80 flex items-center gap-1"
+                          aria-label={`Delete ${track.title}`}
+                          title="Delete this track"
                         >
                           <Trash2 size={12} /> Delete
                         </button>
